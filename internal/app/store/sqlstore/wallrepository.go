@@ -5,7 +5,7 @@ import (
 
 	"time"
 
-	"githab.com/katelinlis/msnwallbackend/internal/app/model"
+	"github.com/katelinlis/Wallbackend/internal/app/model"
 )
 
 type WallRepository struct {

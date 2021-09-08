@@ -2,7 +2,7 @@ package sqlstore
 
 import (
 	"database/sql"
-	"githab.com/katelinlis/msnwallbackend/internal/app/store"
+	"github.com/katelinlis/Wallbackend/internal/app/store"
 	//"githab.com/katelinlis/msnwallbackend/internal/app/model"
 	_ "github.com/lib/pq" //db import
 )

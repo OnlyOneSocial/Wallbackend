@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"githab.com/katelinlis/msnwallbackend/internal/app/model"
 	"github.com/gorilla/mux"
+	"github.com/katelinlis/Wallbackend/internal/app/model"
 )
 
 func (s *server) ConfigureWallRouter() {

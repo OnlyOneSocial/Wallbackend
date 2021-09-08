@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"githab.com/katelinlis/msnwallbackend/internal/app/apiserver"
 	"github.com/BurntSushi/toml"
+	"github.com/katelinlis/Wallbackend/internal/app/apiserver"
 )
 
 var (

@@ -1,7 +1,7 @@
 package httpstore
 
 import (
-	"githab.com/katelinlis/msnwallbackend/internal/app/store"
+	"github.com/katelinlis/Wallbackend/internal/app/store"
 )
 
 //Store ...

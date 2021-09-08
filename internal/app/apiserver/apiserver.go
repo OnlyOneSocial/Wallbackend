@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"githab.com/katelinlis/msnwallbackend/internal/app/store/httpstore"
-	"githab.com/katelinlis/msnwallbackend/internal/app/store/sqlstore"
+	"github.com/katelinlis/Wallbackend/internal/app/store/httpstore"
+	"github.com/katelinlis/Wallbackend/internal/app/store/sqlstore"
 )
 
 func Start(config *Config) {

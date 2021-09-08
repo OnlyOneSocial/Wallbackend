@@ -1,4 +1,4 @@
-module githab.com/katelinlis/msnwallbackend
+module github.com/katelinlis/Wallbackend
 
 go 1.17
 

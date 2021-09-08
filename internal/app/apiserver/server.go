@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"githab.com/katelinlis/msnwallbackend/internal/app/store"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-redis/redis"
 	"github.com/gorilla/mux"
+	"github.com/katelinlis/Wallbackend/internal/app/store"
 	"github.com/sirupsen/logrus"
 )
 

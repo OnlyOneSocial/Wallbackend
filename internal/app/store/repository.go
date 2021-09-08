@@ -1,6 +1,6 @@
 package store
 
-import "githab.com/katelinlis/msnwallbackend/internal/app/model"
+import "github.com/katelinlis/Wallbackend/internal/app/model"
 
 //UserRepository ...
 type WallRepository interface {

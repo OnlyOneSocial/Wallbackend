@@ -7,6 +7,7 @@ import (
 //Store ...
 type Store struct {
 	userCache      map[int]string
+	friendsCache   map[int][]int
 	userRepository *UserRepository
 }
 
@@ -24,7 +25,8 @@ Todo поставить ограничение на карту
 
 func New() *Store {
 	return &Store{
-		userCache: make(map[int]string),
+		userCache:    make(map[int]string),
+		friendsCache: make(map[int][]int),
 	}
 }
 

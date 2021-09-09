@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/katelinlis/Wallbackend/internal/app/model"
+	"github.com/lib/pq"
 )
 
 type WallRepository struct {
@@ -46,10 +47,15 @@ func (r *WallRepository) GetByAuthor(offset int, limit int, userid int) ([]model
 	return wall, err2
 }
 
-func (r *WallRepository) GetByFriends(offset int, limit int, userids string) ([]model.Wall, error) {
+func (r *WallRepository) GetByFriends(offset int, limit int, userids []int) ([]model.Wall, error) {
 	wall := []model.Wall{}
 
-	var rows, err2 = r.store.db.Query("select author,text,timestamp from wall where author in ($1) ORDER BY id DESC limit $2 OFFSET $3", userids, limit, offset)
+	var rows, err2 = r.store.db.Query("select author,text,timestamp from wall where author = ANY($1::int[]) ORDER BY id DESC limit $2 OFFSET $3", pq.Array(userids), limit, offset)
+
+	if err2 != nil {
+		return wall, err2
+	}
+
 	for rows.Next() {
 		post := model.Wall{}
 		err := rows.Scan(&post.Author, &post.Text, &post.Timestamp)

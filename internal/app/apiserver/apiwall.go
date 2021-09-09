@@ -49,7 +49,14 @@ func (s *server) HandleSendWall() http.HandlerFunc {
 func (s *server) HandleGetNews() http.HandlerFunc {
 	return func(w http.ResponseWriter, request *http.Request) {
 		offset, limit := s.UrlLimitOffset(request)
-		wall, err := s.store.Wall().GetByFriends(offset, limit, "1")
+
+		userid, err := s.GetDataFromToken(w, request)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		friends := s.HTTPstore.User().GetFriends(int(userid))
+		wall, err := s.store.Wall().GetByFriends(offset, limit, friends)
 		if err != nil {
 			fmt.Println(err)
 		}

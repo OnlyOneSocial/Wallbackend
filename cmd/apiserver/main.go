@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
+	"os/signal"
+	"syscall"
 
 	"github.com/BurntSushi/toml"
 	"github.com/katelinlis/Wallbackend/internal/app/apiserver"
@@ -36,15 +37,18 @@ func main() {
 
 	go apiserver.Start(config)
 
-	var input string
+	sigs := make(chan os.Signal, 1)
+	done := make(chan bool, 1)
 
-	for {
-		time.Sleep(2 * time.Second)
-		fmt.Scanln(&input)
-		if input == "c" {
-			break
-		}
-	}
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	//fmt.Println("Hello world")
+	go func() {
+		sig := <-sigs
+		fmt.Println()
+		fmt.Println(sig)
+		done <- true
+	}()
+
+	fmt.Println("awaiting signal")
+	<-done
 }

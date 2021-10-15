@@ -105,6 +105,10 @@ func (s *server) UrlLimitOffset(request *http.Request) (int, int) {
 }
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "DELETE, POST, GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With")
+
 	defer r.Body.Close()
 	s.router.ServeHTTP(w, r)
 }
@@ -112,6 +116,14 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *server) configureRouter() {
 
 	s.router.Use(s.loggingMiddleware)
+
+	s.router.Methods("OPTIONS").HandlerFunc(
+		func(rw http.ResponseWriter, r *http.Request) {
+			rw.Header().Set("Access-Control-Allow-Origin", "*")
+			rw.Header().Set("Access-Control-Allow-Methods", "DELETE, POST, GET, OPTIONS")
+			rw.Header().Set("Access-Control-Allow-Headers", "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With")
+			rw.WriteHeader(http.StatusOK)
+		})
 
 	s.ConfigureWallRouter()
 }

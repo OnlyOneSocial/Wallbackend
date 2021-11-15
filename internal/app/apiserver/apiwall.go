@@ -13,9 +13,11 @@ import (
 func (s *server) ConfigureWallRouter() {
 
 	router := s.router.PathPrefix("/api/wall").Subrouter()
-	router.HandleFunc("/send", s.HandleSendWall()).Methods("POST")           // Получение всей стены
-	router.HandleFunc("/get", s.HandleGetNews()).Methods("GET")              // Получение всей стены
-	router.HandleFunc("/get/{id}", s.HandleGetNewsByAuthor()).Methods("GET") // Получение стены какого то пользователя
+	router.HandleFunc("/send", s.HandleSendWall()).Methods("POST")            // Получение всей стены
+	router.HandleFunc("/get", s.HandleGetNews()).Methods("GET")               // Получение всей стены
+	router.HandleFunc("/get/{id}/{postID}", s.HandleGetPost()).Methods("GET") // Получение определенного поста
+	router.HandleFunc("/get/{id}", s.HandleGetNewsByAuthor()).Methods("GET")  // Получение стены какого то пользователя
+	router.HandleFunc("/ScanDBandCreateUUID", s.CreateUUID()).Methods("GET")  // Получение стены какого то пользователя
 }
 
 type CreatePost struct {
@@ -88,5 +90,36 @@ func (s *server) HandleGetNewsByAuthor() http.HandlerFunc {
 		}
 
 		s.respond(w, request, http.StatusOK, wall)
+	}
+}
+
+func (s *server) HandleGetPost() http.HandlerFunc {
+	return func(w http.ResponseWriter, request *http.Request) {
+		vars := mux.Vars(request)
+		AuthorID, err := strconv.Atoi(vars["id"])
+		if err != nil {
+			fmt.Println(err)
+		}
+		postID := vars["postID"]
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		wall, err := s.store.Wall().GetPost(AuthorID, postID)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		username := s.HTTPstore.User().GetUsername(wall.Author)
+		wall.AuthorUsername = username
+
+		s.respond(w, request, http.StatusOK, wall)
+	}
+}
+
+func (s *server) CreateUUID() http.HandlerFunc {
+	return func(w http.ResponseWriter, request *http.Request) {
+		s.store.Wall().ScanAndCreateUUID()
+		s.respond(w, request, http.StatusOK, "ok")
 	}
 }

@@ -101,6 +101,8 @@ func (r *WallRepository) GetPost(AuthorID int, PostID string) (model.Wall, error
 		AuthorID,
 	).Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID)
 
+	post.Proccessing()
+
 	//post.RandomID = uuid
 	return post, err
 }

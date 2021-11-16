@@ -116,7 +116,7 @@ func (r *WallRepository) GetPost(PostID string) (model.Wall, []model.Wall, error
 
 	for rows.Next() {
 		post2 := model.Wall{}
-		err := rows.Scan(&post2.Author, &post2.Text, &post2.Timestamp, &post.RandomID, &post2.AnswerTO)
+		err := rows.Scan(&post2.Author, &post2.Text, &post2.Timestamp, &post2.RandomID, &post2.AnswerTO)
 		if err != nil {
 			return post, answer, err
 		}

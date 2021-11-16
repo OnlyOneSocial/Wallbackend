@@ -57,10 +57,10 @@ func (r *WallRepository) Update(p *model.Wall) error {
 func (r *WallRepository) GetByAuthor(offset int, limit int, userid int) ([]model.Wall, error) {
 	wall := []model.Wall{}
 
-	var rows, err2 = r.store.db.Query("Select author,text,timestamp,random_id from wall where author = $1 ORDER BY id DESC limit $2 OFFSET $3", userid, limit, offset)
+	var rows, err2 = r.store.db.Query("Select author,text,timestamp,random_id,answer_to from wall where author = $1 ORDER BY id DESC limit $2 OFFSET $3", userid, limit, offset)
 	for rows.Next() {
 		post := model.Wall{}
-		err := rows.Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID)
+		err := rows.Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO)
 		if err != nil {
 			return wall, err
 		}
@@ -80,7 +80,7 @@ func (r *WallRepository) GetByAuthor(offset int, limit int, userid int) ([]model
 func (r *WallRepository) GetByFriends(offset int, limit int, userids []int) ([]model.Wall, error) {
 	wall := []model.Wall{}
 
-	var rows, err2 = r.store.db.Query("select author,text,timestamp,random_id from wall where author = ANY($1::int[]) ORDER BY id DESC limit $2 OFFSET $3", pq.Array(userids), limit, offset)
+	var rows, err2 = r.store.db.Query("select author,text,timestamp,random_id,answer_to from wall where author = ANY($1::int[]) ORDER BY id DESC limit $2 OFFSET $3", pq.Array(userids), limit, offset)
 
 	if err2 != nil {
 		return wall, err2
@@ -88,7 +88,7 @@ func (r *WallRepository) GetByFriends(offset int, limit int, userids []int) ([]m
 
 	for rows.Next() {
 		post := model.Wall{}
-		err := rows.Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID)
+		err := rows.Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO)
 		if err != nil {
 			return wall, err
 		}

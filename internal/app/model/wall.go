@@ -6,7 +6,7 @@ import (
 	"github.com/katelinlis/goment"
 )
 
-//User ...
+//Wall ...
 type Wall struct {
 	ID             int       `json:"id"`
 	Author         int       `json:"author"`
@@ -17,13 +17,14 @@ type Wall struct {
 	Timestamp      int64     //`json:"timestamp"`
 	Time           string    `json:"time"`
 	RandomID       uuid.UUID `json:"random_id"`
+	AnswerTO       uuid.UUID `json:"answerto"`
 }
 
 //Validate ...
 func (w *Wall) Validate() error {
 	return validation.ValidateStruct(
 		w,
-		validation.Field(&w.Text, validation.Required, validation.Length(1, 200)),
+		validation.Field(&w.Text, validation.Required, validation.Length(1, 400)),
 		validation.Field(&w.Author, validation.Required),
 	)
 }

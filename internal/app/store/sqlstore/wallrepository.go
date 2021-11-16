@@ -3,6 +3,7 @@ package sqlstore
 import (
 	//"database/sql"
 
+	"fmt"
 	"time"
 
 	"github.com/katelinlis/Wallbackend/internal/app/model"
@@ -23,11 +24,12 @@ func (r *WallRepository) Create(p *model.Wall) error {
 	p.GenerateUUID()
 
 	var err2 = r.store.db.QueryRow(
-		"INSERT INTO wall (author,text,timestamp,random_id) VALUES ($1,$2,$3,$4) RETURNING id",
+		"INSERT INTO wall (author,text,timestamp,random_id,answer_to) VALUES ($1,$2,$3,$4,$5) RETURNING id",
 		p.Author,
 		p.Text,
 		time.Now().Unix(),
 		p.RandomID.String(),
+		p.AnswerTO.String(),
 	).Scan(&p.ID)
 
 	return err2
@@ -40,10 +42,12 @@ func (r *WallRepository) Update(p *model.Wall) error {
 		return err
 	}
 
+	fmt.Println(p.RandomID.String())
+
 	var err2 = r.store.db.QueryRow(
-		"UPDATE wall set random_id = $1 where id=$2 RETURNING id",
+		"UPDATE wall set answer_to = $1 where random_id=$2 RETURNING id",
+		p.AnswerTO.String(),
 		p.RandomID.String(),
-		p.ID,
 	).Scan(&p.ID)
 
 	return err2
@@ -92,32 +96,56 @@ func (r *WallRepository) GetByFriends(offset int, limit int, userids []int) ([]m
 }
 
 //GetPost ...
-func (r *WallRepository) GetPost(AuthorID int, PostID string) (model.Wall, error) {
+func (r *WallRepository) GetPost(PostID string) (model.Wall, []model.Wall, error) {
 	post := model.Wall{}
+	answer := []model.Wall{}
 
 	var err = r.store.db.QueryRow(
-		"select author,text,timestamp,random_id from wall where random_id = $1 and author = $2",
+		"select author,text,timestamp,random_id,answer_to from wall where random_id = $1",
 		PostID,
-		AuthorID,
-	).Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID)
+	).Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO)
+
+	if err != nil {
+		return post, answer, err
+	}
+
+	rows, err := r.store.db.Query(
+		"select author,text,timestamp,random_id,answer_to from wall where answer_to = $1",
+		PostID,
+	)
+
+	for rows.Next() {
+		post2 := model.Wall{}
+		err := rows.Scan(&post2.RandomID, &post2.Author, &post2.Text, &post2.Timestamp, &post2.AnswerTO)
+		if err != nil {
+			return post, answer, err
+		}
+		post2.Proccessing()
+		answer = append(answer, post2)
+
+	}
+
+	if err != nil {
+		return post, answer, err
+	}
 
 	post.Proccessing()
 
 	//post.RandomID = uuid
-	return post, err
+	return post, answer, err
 }
 
 // ScanAndCreateUUID ...
 func (r *WallRepository) ScanAndCreateUUID() error {
-	var rows, err = r.store.db.Query("select id,author,text,timestamp from wall where random_id IS NULL ORDER BY id limit 100")
+	var rows, err = r.store.db.Query("select random_id,author,text,timestamp from wall where answer_to IS NULL ORDER BY id limit 100")
 
 	for rows.Next() {
 		post := model.Wall{}
-		err := rows.Scan(&post.ID, &post.Author, &post.Text, &post.Timestamp)
+		err := rows.Scan(&post.RandomID, &post.Author, &post.Text, &post.Timestamp)
 		if err != nil {
 			return err
 		}
-		post.GenerateUUID()
+		//post.GenerateUUID()
 		r.Update(&post)
 	}
 	return err

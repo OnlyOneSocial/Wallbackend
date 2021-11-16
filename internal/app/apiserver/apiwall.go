@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/katelinlis/Wallbackend/internal/app/model"
 )
@@ -13,15 +14,17 @@ import (
 func (s *server) ConfigureWallRouter() {
 
 	router := s.router.PathPrefix("/api/wall").Subrouter()
-	router.HandleFunc("/send", s.HandleSendWall()).Methods("POST")            // Получение всей стены
-	router.HandleFunc("/get", s.HandleGetNews()).Methods("GET")               // Получение всей стены
-	router.HandleFunc("/get/{id}/{postID}", s.HandleGetPost()).Methods("GET") // Получение определенного поста
-	router.HandleFunc("/get/{id}", s.HandleGetNewsByAuthor()).Methods("GET")  // Получение стены какого то пользователя
-	router.HandleFunc("/ScanDBandCreateUUID", s.CreateUUID()).Methods("GET")  // Получение стены какого то пользователя
+	router.HandleFunc("/send", s.HandleSendWall()).Methods("POST")           // Получение всей стены
+	router.HandleFunc("/get", s.HandleGetNews()).Methods("GET")              // Получение всей стены
+	router.HandleFunc("/get/{postID}", s.HandleGetPost()).Methods("GET")     // Получение определенного поста
+	router.HandleFunc("/get/{id}", s.HandleGetNewsByAuthor()).Methods("GET") // Получение стены какого то пользователя
+	router.HandleFunc("/ScanDBandCreateUUID", s.CreateUUID()).Methods("GET") // Получение стены какого то пользователя
 }
 
+//CreatePost ...
 type CreatePost struct {
-	Text string `json:"text"`
+	Text     string `json:"text"`
+	AnswerTO string `json:"answer"`
 }
 
 func (s *server) HandleSendWall() http.HandlerFunc {
@@ -31,11 +34,21 @@ func (s *server) HandleSendWall() http.HandlerFunc {
 			fmt.Println(err)
 		}
 		var createPost CreatePost
-		json.NewDecoder(request.Body).Decode(&createPost)
+		err = json.NewDecoder(request.Body).Decode(&createPost)
+		if err != nil {
+			s.error(w, request, http.StatusBadRequest, err)
+		}
 
 		var wall model.Wall
 		wall.Author = int(userid)
 		wall.Text = createPost.Text
+
+		uuid, err := uuid.Parse(createPost.AnswerTO)
+		if err != nil {
+			s.error(w, request, http.StatusBadRequest, err)
+		}
+
+		wall.AnswerTO = uuid
 		err = s.store.Wall().Create(&wall)
 
 		if err != nil {
@@ -94,26 +107,35 @@ func (s *server) HandleGetNewsByAuthor() http.HandlerFunc {
 }
 
 func (s *server) HandleGetPost() http.HandlerFunc {
+
+	type PostData struct {
+		Post    model.Wall
+		Answers []model.Wall
+	}
+
 	return func(w http.ResponseWriter, request *http.Request) {
 		vars := mux.Vars(request)
-		AuthorID, err := strconv.Atoi(vars["id"])
-		if err != nil {
-			fmt.Println(err)
-		}
 		postID := vars["postID"]
+
+		post, answers, err := s.store.Wall().GetPost(postID)
 		if err != nil {
 			fmt.Println(err)
 		}
 
-		wall, err := s.store.Wall().GetPost(AuthorID, postID)
-		if err != nil {
-			fmt.Println(err)
+		username := s.HTTPstore.User().GetUsername(post.Author)
+		post.AuthorUsername = username
+
+		for index, element := range answers {
+			username := s.HTTPstore.User().GetUsername(element.Author)
+			answers[index].AuthorUsername = username
 		}
 
-		username := s.HTTPstore.User().GetUsername(wall.Author)
-		wall.AuthorUsername = username
+		postdata := PostData{
+			Post:    post,
+			Answers: answers,
+		}
 
-		s.respond(w, request, http.StatusOK, wall)
+		s.respond(w, request, http.StatusOK, postdata)
 	}
 }
 

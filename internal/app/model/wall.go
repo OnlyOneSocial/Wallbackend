@@ -18,6 +18,7 @@ type Wall struct {
 	Time           string    `json:"time"`
 	RandomID       uuid.UUID `json:"random_id"`
 	AnswerTO       uuid.UUID `json:"answerto"`
+	AnswerCount    int       `json:"answercount"`
 }
 
 //Validate ...

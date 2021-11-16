@@ -9,6 +9,8 @@ type WallRepository interface {
 	GetByFriends(offset int, limit int, userids []int) ([]model.Wall, error) // Получить новости друзей и людей на которых подписан пользователь
 	GetPost(PostID string) (model.Wall, []model.Wall, error)                 // Получение определенного поста
 	ScanAndCreateUUID() error                                                // Сканирование и создание UUID если пусто
+	GetAnswersCount(PostID string) (int, error)
+	GetAnswers(PostID string) ([]model.Wall, error)
 }
 
 //UserRepository ...

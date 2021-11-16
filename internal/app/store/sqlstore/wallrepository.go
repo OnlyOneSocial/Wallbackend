@@ -65,6 +65,11 @@ func (r *WallRepository) GetByAuthor(offset int, limit int, userid int) ([]model
 			return wall, err
 		}
 		post.Proccessing()
+		AnswerCount, err := r.GetAnswersCount(post.RandomID.String())
+		if err != nil {
+			return wall, err
+		}
+		post.AnswerCount = AnswerCount
 		wall = append(wall, post)
 	}
 
@@ -87,12 +92,60 @@ func (r *WallRepository) GetByFriends(offset int, limit int, userids []int) ([]m
 		if err != nil {
 			return wall, err
 		}
+		AnswerCount, err := r.GetAnswersCount(post.RandomID.String())
+		if err != nil {
+			return wall, err
+		}
+		post.AnswerCount = AnswerCount
 		post.Proccessing()
 
 		wall = append(wall, post)
 	}
 
 	return wall, err2
+}
+
+//GetAnswers ...
+func (r *WallRepository) GetAnswers(PostID string) ([]model.Wall, error) {
+	answer := []model.Wall{}
+	rows, err := r.store.db.Query(
+		"select author,text,timestamp,random_id,answer_to from wall where answer_to = $1",
+		PostID,
+	)
+	if err != nil {
+		return answer, err
+	}
+
+	for rows.Next() {
+		post := model.Wall{}
+		err := rows.Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO)
+		if err != nil {
+			return answer, err
+		}
+		AnswerCount, err := r.GetAnswersCount(PostID)
+		if err != nil {
+			return answer, err
+		}
+		post.AnswerCount = AnswerCount
+		post.Proccessing()
+
+		answer = append(answer, post)
+
+	}
+	return answer, err
+}
+
+//GetAnswersCount ...
+func (r *WallRepository) GetAnswersCount(PostID string) (int, error) {
+	var count int
+	err := r.store.db.QueryRow(
+		"select COUNT(answer_to) from wall where answer_to = $1",
+		PostID,
+	).Scan(&count)
+	if err != nil {
+		return count, err
+	}
+	return count, err
 }
 
 //GetPost ...
@@ -104,31 +157,19 @@ func (r *WallRepository) GetPost(PostID string) (model.Wall, []model.Wall, error
 		"select author,text,timestamp,random_id,answer_to from wall where random_id = $1",
 		PostID,
 	).Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO)
-
 	if err != nil {
 		return post, answer, err
 	}
 
-	rows, err := r.store.db.Query(
-		"select author,text,timestamp,random_id,answer_to from wall where answer_to = $1",
-		PostID,
-	)
-
-	for rows.Next() {
-		post2 := model.Wall{}
-		err := rows.Scan(&post2.Author, &post2.Text, &post2.Timestamp, &post2.RandomID, &post2.AnswerTO)
-		if err != nil {
-			return post, answer, err
-		}
-		post2.Proccessing()
-		answer = append(answer, post2)
-
-	}
-
+	answer, err = r.GetAnswers(PostID)
 	if err != nil {
 		return post, answer, err
 	}
-
+	AnswerCount, err := r.GetAnswersCount(post.RandomID.String())
+	if err != nil {
+		return post, answer, err
+	}
+	post.AnswerCount = AnswerCount
 	post.Proccessing()
 
 	//post.RandomID = uuid

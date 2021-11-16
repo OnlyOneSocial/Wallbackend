@@ -16,7 +16,7 @@ func (s *server) ConfigureWallRouter() {
 	router := s.router.PathPrefix("/api/wall").Subrouter()
 	router.HandleFunc("/send", s.HandleSendWall()).Methods("POST")           // Получение всей стены
 	router.HandleFunc("/get", s.HandleGetNews()).Methods("GET")              // Получение всей стены
-	router.HandleFunc("/get/{postID}", s.HandleGetPost()).Methods("GET")     // Получение определенного поста
+	router.HandleFunc("/post/{postID}", s.HandleGetPost()).Methods("GET")    // Получение определенного поста
 	router.HandleFunc("/get/{id}", s.HandleGetNewsByAuthor()).Methods("GET") // Получение стены какого то пользователя
 	router.HandleFunc("/ScanDBandCreateUUID", s.CreateUUID()).Methods("GET") // Получение стены какого то пользователя
 }

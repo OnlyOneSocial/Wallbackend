@@ -43,10 +43,7 @@ func (s *server) HandleSendWall() http.HandlerFunc {
 		wall.Author = int(userid)
 		wall.Text = createPost.Text
 
-		uuid, err := uuid.Parse(createPost.AnswerTO)
-		if err != nil {
-			s.error(w, request, http.StatusBadRequest, err)
-		}
+		uuid, _ := uuid.Parse(createPost.AnswerTO)
 
 		wall.AnswerTO = uuid
 		err = s.store.Wall().Create(&wall)

@@ -1,3 +1,3 @@
 # Микросервис для бэкенда стены
-### проект <a href="https://social.katelinlis.xyz">social.katelinlis.xyz</a>
-### репозиторий фронтенда <a href="https://github.com/katelinlis/msnfrontend"> github.com/katelinlis/msnfrontend
+### проект <a href="https://only-one.su">only-one.su</a>
+### репозиторий фронтенда <a href="https://github.com/katelinlis/nuxtjsFrontend"> github.com/katelinlis/nuxtjsFrontend

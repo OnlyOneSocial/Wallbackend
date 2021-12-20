@@ -1,5 +1,5 @@
 # Микросервис для бэкенда стены
-[![Go Reference](https://pkg.go.dev/badge/github.com/Tnze/go-mc.svg)](https://pkg.go.dev/github.com/OnlyOneSocial/Wallbackend)
+[![Go Reference](https://pkg.go.dev/badge/github.com/OnlyOneSocial/Wallbackend.svg)](https://pkg.go.dev/github.com/OnlyOneSocial/Wallbackend)
 [![Go Report Card](https://goreportcard.com/badge/github.com/OnlyOneSocial/Wallbackend)](https://goreportcard.com/report/github.com/OnlyOneSocial/Wallbackend)
 [![Discord](https://img.shields.io/discord/922386468138266725?label=Discord)](https://discord.gg/A4qh8BT8Ue)
 

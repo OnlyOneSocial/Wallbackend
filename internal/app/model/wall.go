@@ -10,6 +10,7 @@ import (
 type Wall struct {
 	ID             int       `json:"id"`
 	Author         int       `json:"author"`
+	AuthorAvatar   string    `json:"author_avatar"`
 	AuthorUsername string    `json:"author_username"`
 	Text           string    `json:"text"`
 	Image          string    //`json:"image"`

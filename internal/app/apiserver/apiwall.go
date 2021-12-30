@@ -18,7 +18,7 @@ func (s *server) ConfigureWallRouter() {
 	router.HandleFunc("/get", s.HandleGetNews()).Methods("GET")              // Получение всей стены
 	router.HandleFunc("/post/{postID}", s.HandleGetPost()).Methods("GET")    // Получение определенного поста
 	router.HandleFunc("/get/{id}", s.HandleGetNewsByAuthor()).Methods("GET") // Получение стены какого то пользователя
-	router.HandleFunc("/ScanDBandCreateUUID", s.CreateUUID()).Methods("GET") // Получение стены какого то пользователя
+	//router.HandleFunc("/ScanDBandCreateUUID", s.CreateUUID()).Methods("GET") // Получение стены какого то пользователя
 }
 
 //CreatePost ...
@@ -73,8 +73,9 @@ func (s *server) HandleGetNews() http.HandlerFunc {
 			fmt.Println(err)
 		}
 		for index, element := range wall {
-			username := s.HTTPstore.User().GetUsername(element.Author)
-			wall[index].AuthorUsername = username
+			user := s.HTTPstore.User().GetUser(element.Author)
+			wall[index].AuthorUsername = user.Username
+			wall[index].AuthorAvatar = user.Avatar
 		}
 		s.respond(w, request, http.StatusOK, wall)
 	}
@@ -95,8 +96,9 @@ func (s *server) HandleGetNewsByAuthor() http.HandlerFunc {
 		}
 
 		for index, element := range wall {
-			username := s.HTTPstore.User().GetUsername(element.Author)
-			wall[index].AuthorUsername = username
+			user := s.HTTPstore.User().GetUser(element.Author)
+			wall[index].AuthorUsername = user.Username
+			wall[index].AuthorAvatar = user.Avatar
 		}
 
 		s.respond(w, request, http.StatusOK, wall)
@@ -119,12 +121,14 @@ func (s *server) HandleGetPost() http.HandlerFunc {
 			fmt.Println(err)
 		}
 
-		username := s.HTTPstore.User().GetUsername(post.Author)
-		post.AuthorUsername = username
+		user := s.HTTPstore.User().GetUser(post.Author)
+		post.AuthorUsername = user.Username
+		post.AuthorAvatar = user.Avatar
 
 		for index, element := range answers {
-			username := s.HTTPstore.User().GetUsername(element.Author)
-			answers[index].AuthorUsername = username
+			user := s.HTTPstore.User().GetUser(element.Author)
+			answers[index].AuthorUsername = user.Username
+			answers[index].AuthorAvatar = user.Avatar
 		}
 
 		postdata := PostData{

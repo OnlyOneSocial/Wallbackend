@@ -8,10 +8,12 @@ import (
 	"strconv"
 )
 
+//UserRepository ...
 type UserRepository struct {
 	store *Store
 }
 
+//GetUsername ...
 func (r *UserRepository) GetUsername(AuthorID int) string {
 	if val, ok := r.store.userCache[AuthorID]; ok {
 		return val
@@ -19,7 +21,7 @@ func (r *UserRepository) GetUsername(AuthorID int) string {
 	userId := strconv.Itoa(AuthorID)
 
 	client := http.Client{}
-	resp, err := client.Get(`http://localhost:3044/api/user/get/` + userId)
+	resp, err := client.Get(`http://localhost:3046/api/user/get/` + userId)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -32,6 +34,7 @@ func (r *UserRepository) GetUsername(AuthorID int) string {
 	return result["user"]["username"]
 }
 
+//GetFriends ...
 func (r *UserRepository) GetFriends(AuthorID int) []int {
 	if val, ok := r.store.friendsCache[AuthorID]; ok {
 		return val
@@ -39,7 +42,7 @@ func (r *UserRepository) GetFriends(AuthorID int) []int {
 	userId := strconv.Itoa(AuthorID)
 
 	client := http.Client{}
-	resp, err := client.Get(`http://localhost:3044/api/user/array_friends/` + userId)
+	resp, err := client.Get(`http://localhost:3046/api/friends/array_friends/` + userId)
 	if err != nil {
 		log.Fatalln(err)
 	}

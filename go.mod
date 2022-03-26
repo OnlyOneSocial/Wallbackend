@@ -21,10 +21,7 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/golang-jwt/jwt/v4 v4.0.0
+	github.com/google/uuid v1.3.0
 	github.com/pmezard/go-difflib v1.0.0
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
-)
-
-require (
-	github.com/google/uuid v1.3.0 // indirect
 )

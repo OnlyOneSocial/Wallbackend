@@ -54,6 +54,7 @@ func (s *server) HandleSendWall() http.HandlerFunc {
 		}
 
 		s.redis.Del("wallget/" + string(rune(int(userid))))
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		s.respond(w, request, http.StatusOK, wall)
 	}
 }
@@ -76,6 +77,7 @@ func (s *server) HandleGetNews() http.HandlerFunc {
 			username := s.HTTPstore.User().GetUsername(element.Author)
 			wall[index].AuthorUsername = username
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		s.respond(w, request, http.StatusOK, wall)
 	}
 }
@@ -98,7 +100,7 @@ func (s *server) HandleGetNewsByAuthor() http.HandlerFunc {
 			username := s.HTTPstore.User().GetUsername(element.Author)
 			wall[index].AuthorUsername = username
 		}
-
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		s.respond(w, request, http.StatusOK, wall)
 	}
 }
@@ -131,7 +133,7 @@ func (s *server) HandleGetPost() http.HandlerFunc {
 			Post:    post,
 			Answers: answers,
 		}
-
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		s.respond(w, request, http.StatusOK, postdata)
 	}
 }

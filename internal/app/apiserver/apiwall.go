@@ -14,17 +14,56 @@ import (
 func (s *server) ConfigureWallRouter() {
 
 	router := s.router.PathPrefix("/api/wall").Subrouter()
-	router.HandleFunc("/send", s.HandleSendWall()).Methods("POST")           // Получение всей стены
-	router.HandleFunc("/get", s.HandleGetNews()).Methods("GET")              // Получение всей стены
-	router.HandleFunc("/post/{postID}", s.HandleGetPost()).Methods("GET")    // Получение определенного поста
-	router.HandleFunc("/get/{id}", s.HandleGetNewsByAuthor()).Methods("GET") // Получение стены какого то пользователя
-	router.HandleFunc("/ScanDBandCreateUUID", s.CreateUUID()).Methods("GET") // Получение стены какого то пользователя
+	router.HandleFunc("/send", s.HandleSendWall()).Methods("POST")             // Получение всей стены
+	router.HandleFunc("/get", s.HandleGetNews()).Methods("GET")                // Получение всей стены
+	router.HandleFunc("/post/{postID}", s.HandleGetPost()).Methods("GET")      // Получение определенного поста
+	router.HandleFunc("/get/{id}", s.HandleGetNewsByAuthor()).Methods("GET")   // Получение стены какого то пользователя
+	router.HandleFunc("/like/{id}", s.HandleSetLikeOrRemove()).Methods("POST") // Получение стены какого то пользователя
+	//router.HandleFunc("/ScanDBandCreateUUID", s.CreateUUID()).Methods("GET") // Получение стены какого то пользователя
 }
 
 //CreatePost ...
 type CreatePost struct {
 	Text     string `json:"text"`
 	AnswerTO string `json:"answer"`
+}
+
+func (s *server) HandleSetLikeOrRemove() http.HandlerFunc {
+	return func(w http.ResponseWriter, request *http.Request) {
+		vars := mux.Vars(request)
+		postid, _ := vars["id"]
+
+		userid, err := s.GetDataFromToken(w, request)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		wall, _, err := s.store.Wall().GetPost(postid)
+
+		if err != nil {
+			return
+		}
+
+		liked, err := s.store.Wall().GetLike(wall.RandomID, int(userid))
+
+		if !liked && err != nil && err.Error() == "sql: no rows in result set" {
+			liked, err := s.store.Wall().SetLike(wall.RandomID, int(userid))
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+			fmt.Println(liked)
+		}
+
+		if liked {
+			liked, err := s.store.Wall().RemoveLike(wall.RandomID, int(userid))
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+			fmt.Println(liked)
+		}
+
+	}
 }
 
 func (s *server) HandleSendWall() http.HandlerFunc {
@@ -74,8 +113,9 @@ func (s *server) HandleGetNews() http.HandlerFunc {
 			fmt.Println(err)
 		}
 		for index, element := range wall {
-			username := s.HTTPstore.User().GetUsername(element.Author)
-			wall[index].AuthorUsername = username
+			user := s.HTTPstore.User().GetUser(element.Author)
+			wall[index].AuthorUsername = user.Username
+			wall[index].AuthorAvatar = user.Avatar
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		s.respond(w, request, http.StatusOK, wall)
@@ -97,8 +137,9 @@ func (s *server) HandleGetNewsByAuthor() http.HandlerFunc {
 		}
 
 		for index, element := range wall {
-			username := s.HTTPstore.User().GetUsername(element.Author)
-			wall[index].AuthorUsername = username
+			user := s.HTTPstore.User().GetUser(element.Author)
+			wall[index].AuthorUsername = user.Username
+			wall[index].AuthorAvatar = user.Avatar
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		s.respond(w, request, http.StatusOK, wall)
@@ -121,12 +162,14 @@ func (s *server) HandleGetPost() http.HandlerFunc {
 			fmt.Println(err)
 		}
 
-		username := s.HTTPstore.User().GetUsername(post.Author)
-		post.AuthorUsername = username
+		user := s.HTTPstore.User().GetUser(post.Author)
+		post.AuthorUsername = user.Username
+		post.AuthorAvatar = user.Avatar
 
 		for index, element := range answers {
-			username := s.HTTPstore.User().GetUsername(element.Author)
-			answers[index].AuthorUsername = username
+			user := s.HTTPstore.User().GetUser(element.Author)
+			answers[index].AuthorUsername = user.Username
+			answers[index].AuthorAvatar = user.Avatar
 		}
 
 		postdata := PostData{

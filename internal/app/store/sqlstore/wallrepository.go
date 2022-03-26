@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/katelinlis/Wallbackend/internal/app/model"
 	"github.com/lib/pq"
 )
@@ -53,14 +54,62 @@ func (r *WallRepository) Update(p *model.Wall) error {
 	return err2
 }
 
+//SetLike ...
+func (r *WallRepository) SetLike(PostID uuid.UUID, wholiked int) (bool, error) {
+	err := r.store.db.QueryRow("UPDATE wall SET likes = array_append(likes,$1) WHERE random_id=$2 RETURNING random_id", wholiked, PostID.String())
+
+	var id []uint8
+	if err := err.Scan(&id); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+//RemoveLike ...
+func (r *WallRepository) RemoveLike(PostID uuid.UUID, wholiked int) (bool, error) {
+	err := r.store.db.QueryRow("UPDATE wall SET likes = array_remove(likes,$1) WHERE random_id=$2 RETURNING random_id", wholiked, PostID.String())
+
+	var id []uint8
+	if err := err.Scan(&id); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+//GetLike ...
+func (r *WallRepository) GetLike(PostID uuid.UUID, wholiked int) (bool, error) {
+	err := r.store.db.QueryRow("Select random_id from wall where random_id = $2 and $1 = ANY(likes)", wholiked, PostID.String())
+
+	var id []uint8
+	if err := err.Scan(&id); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+//GetLikes ...
+func (r *WallRepository) GetLikes(PostID uuid.UUID) (bool, error) {
+	err := r.store.db.QueryRow("Select random_id,likes::bigint[] from wall where random_id = $1", PostID.String())
+
+	var id []uint8
+	if err := err.Scan(&id); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 //GetByAuthor ...
 func (r *WallRepository) GetByAuthor(offset int, limit int, userid int) ([]model.Wall, error) {
 	wall := []model.Wall{}
 
-	var rows, err2 = r.store.db.Query("Select author,text,timestamp,random_id,answer_to from wall where author = $1 ORDER BY id DESC limit $2 OFFSET $3", userid, limit, offset)
+	var rows, err2 = r.store.db.Query("Select author,text,timestamp,random_id,answer_to,likes::bigint[] from wall where author = $1 ORDER BY timestamp DESC limit $2 OFFSET $3", userid, limit, offset)
 	for rows.Next() {
 		post := model.Wall{}
-		err := rows.Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO)
+		err := rows.Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO, pq.Array(&post.Likes))
 		if err != nil {
 			return wall, err
 		}
@@ -80,7 +129,7 @@ func (r *WallRepository) GetByAuthor(offset int, limit int, userid int) ([]model
 func (r *WallRepository) GetByFriends(offset int, limit int, userids []int) ([]model.Wall, error) {
 	wall := []model.Wall{}
 
-	var rows, err2 = r.store.db.Query("select author,text,timestamp,random_id,answer_to from wall where author = ANY($1::int[]) ORDER BY id DESC limit $2 OFFSET $3", pq.Array(userids), limit, offset)
+	var rows, err2 = r.store.db.Query("select author,text,timestamp,random_id,answer_to,likes::bigint[] from wall where author = ANY($1::int[]) ORDER BY timestamp DESC limit $2 OFFSET $3", pq.Array(userids), limit, offset)
 
 	if err2 != nil {
 		return wall, err2
@@ -88,7 +137,7 @@ func (r *WallRepository) GetByFriends(offset int, limit int, userids []int) ([]m
 
 	for rows.Next() {
 		post := model.Wall{}
-		err := rows.Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO)
+		err := rows.Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO, pq.Array(&post.Likes))
 		if err != nil {
 			return wall, err
 		}
@@ -109,7 +158,7 @@ func (r *WallRepository) GetByFriends(offset int, limit int, userids []int) ([]m
 func (r *WallRepository) GetAnswers(PostID string) ([]model.Wall, error) {
 	answer := []model.Wall{}
 	rows, err := r.store.db.Query(
-		"select author,text,timestamp,random_id,answer_to from wall where answer_to = $1",
+		"select author,text,timestamp,random_id,answer_to,likes::bigint[] from wall where answer_to = $1",
 		PostID,
 	)
 	if err != nil {
@@ -118,11 +167,11 @@ func (r *WallRepository) GetAnswers(PostID string) ([]model.Wall, error) {
 
 	for rows.Next() {
 		post := model.Wall{}
-		err := rows.Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO)
+		err := rows.Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO, pq.Array(&post.Likes))
 		if err != nil {
 			return answer, err
 		}
-		AnswerCount, err := r.GetAnswersCount(PostID)
+		AnswerCount, err := r.GetAnswersCount(post.RandomID.String())
 		if err != nil {
 			return answer, err
 		}
@@ -152,14 +201,15 @@ func (r *WallRepository) GetAnswersCount(PostID string) (int, error) {
 func (r *WallRepository) GetPost(PostID string) (model.Wall, []model.Wall, error) {
 	post := model.Wall{}
 	answer := []model.Wall{}
-
+	var likes pq.Int64Array
 	var err = r.store.db.QueryRow(
-		"select author,text,timestamp,random_id,answer_to from wall where random_id = $1",
+		"select author,text,timestamp,random_id,answer_to,likes::bigint[] from wall where random_id = $1",
 		PostID,
-	).Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO)
+	).Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO, &likes)
 	if err != nil {
 		return post, answer, err
 	}
+	post.Likes = []int64(likes)
 
 	answer, err = r.GetAnswers(PostID)
 	if err != nil {

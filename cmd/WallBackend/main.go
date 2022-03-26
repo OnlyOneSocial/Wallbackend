@@ -35,6 +35,18 @@ func main() {
 		log.Fatal(err)
 	}
 
+	//err = sentry.Init(sentry.ClientOptions{
+	//	Dsn: "https://2d845747eaa34c2fa80df5a2f7c17760@o1036815.ingest.sentry.io/6004432",
+	//})
+	/*if err != nil {
+		log.Fatalf("sentry.Init: %s", err)
+	}*/
+
+	// Flush buffered events before the program terminates.
+	//defer sentry.Flush(2 * time.Second)
+
+	//sentry.CaptureMessage("It works!")
+
 	go apiserver.Start(config)
 
 	sigs := make(chan os.Signal, 1)

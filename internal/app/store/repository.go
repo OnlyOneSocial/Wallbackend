@@ -1,6 +1,9 @@
 package store
 
-import "github.com/katelinlis/Wallbackend/internal/app/model"
+import (
+	"github.com/google/uuid"
+	"github.com/katelinlis/Wallbackend/internal/app/model"
+)
 
 //WallRepository ...
 type WallRepository interface {
@@ -11,10 +14,13 @@ type WallRepository interface {
 	ScanAndCreateUUID() error                                                // Сканирование и создание UUID если пусто
 	GetAnswersCount(PostID string) (int, error)
 	GetAnswers(PostID string) ([]model.Wall, error)
+	SetLike(PostID uuid.UUID, wholiked int) (bool, error)
+	RemoveLike(PostID uuid.UUID, wholiked int) (bool, error)
+	GetLike(PostID uuid.UUID, wholiked int) (bool, error)
 }
 
 //UserRepository ...
 type UserRepository interface {
-	GetUsername(int) string //Получение имени пользователя
-	GetFriends(int) []int   //Получение списка друзей пользователя
+	GetUser(AuthorID int) model.UserObj //Получение данных о пользователе
+	GetFriends(int) []int               //Получение списка друзей пользователя
 }

@@ -2,10 +2,12 @@ package httpstore
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/katelinlis/Wallbackend/internal/app/model"
+	"github.com/patrickmn/go-cache"
 )
 
 //UserRepository ...
@@ -13,15 +15,15 @@ type UserRepository struct {
 	store *Store
 }
 
-//GetUsername ...
-func (r *UserRepository) GetUsername(AuthorID int) string {
-	if val, ok := r.store.userCache[AuthorID]; ok {
-		return val
+//GetUser ...
+func (r *UserRepository) GetUser(AuthorID int) model.UserObj {
+	if val, ok := r.store.CacheUser.Get(strconv.Itoa(AuthorID)); ok {
+		return val.(model.UserObj)
 	}
-	userId := strconv.Itoa(AuthorID)
+	userID := strconv.Itoa(AuthorID)
 
 	client := http.Client{}
-	resp, err := client.Get(`http://localhost:3046/api/user/get/` + userId)
+	resp, err := client.Get(`http://localhost:3046/api/user/get/` + userID)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -29,20 +31,23 @@ func (r *UserRepository) GetUsername(AuthorID int) string {
 	var result map[string]map[string]string
 	json.NewDecoder(resp.Body).Decode(&result)
 
-	fmt.Println(result["user"]["username"])
-	r.store.userCache[AuthorID] = result["user"]["username"]
-	return result["user"]["username"]
+	usrObj := model.UserObj{
+		Username: result["user"]["username"],
+		Avatar:   result["user"]["avatar"],
+	}
+	r.store.CacheUser.Set(userID, usrObj, cache.DefaultExpiration)
+	return usrObj
 }
 
 //GetFriends ...
 func (r *UserRepository) GetFriends(AuthorID int) []int {
-	if val, ok := r.store.friendsCache[AuthorID]; ok {
-		return val
+	if val, ok := r.store.CacheFriends.Get(strconv.Itoa(AuthorID)); ok {
+		return val.([]int)
 	}
-	userId := strconv.Itoa(AuthorID)
+	userID := strconv.Itoa(AuthorID)
 
 	client := http.Client{}
-	resp, err := client.Get(`http://localhost:3046/api/friends/array_friends/` + userId)
+	resp, err := client.Get(`http://localhost:3046/api/friends/array_friends/` + userID)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -50,7 +55,6 @@ func (r *UserRepository) GetFriends(AuthorID int) []int {
 	var result []int
 	json.NewDecoder(resp.Body).Decode(&result)
 
-	fmt.Println(result)
-	r.store.friendsCache[AuthorID] = result
+	r.store.CacheFriends.Set(userID, result, cache.DefaultExpiration)
 	return result
 }

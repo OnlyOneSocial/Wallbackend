@@ -10,10 +10,11 @@ import (
 type Wall struct {
 	ID             int       `json:"id"`
 	Author         int       `json:"author"`
+	AuthorAvatar   string    `json:"author_avatar"`
 	AuthorUsername string    `json:"author_username"`
 	Text           string    `json:"text"`
-	Image          string    //`json:"image"`
-	Likes          int       //`json:"likes"`
+	Image          []string  //`json:"image"`
+	Likes          []int64   `json:"likes"`
 	Timestamp      int64     //`json:"timestamp"`
 	Time           string    `json:"time"`
 	RandomID       uuid.UUID `json:"random_id"`

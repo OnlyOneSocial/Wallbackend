@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/cache/v8"
+	"github.com/go-redis/redis/v8"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/gorilla/mux"
 	"github.com/katelinlis/Wallbackend/internal/app/store"
@@ -21,6 +23,7 @@ type server struct {
 	store     store.Store
 	HTTPstore store.HTTPStore
 	redis     *redis.Client
+	cache     *cache.Cache
 }
 
 const (
@@ -35,12 +38,20 @@ var (
 )
 
 func newServer(store store.Store, httpstore store.HTTPStore, config *Config) *server {
+	rdb := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+
+	mycache := cache.New(&cache.Options{
+		Redis:      rdb,
+		LocalCache: cache.NewTinyLFU(10000, time.Minute),
+	})
+
 	s := &server{
-		router: mux.NewRouter(),
-		logger: logrus.New(),
-		redis: redis.NewClient(&redis.Options{
-			Addr: "localhost:6379",
-		}),
+		router:    mux.NewRouter(),
+		logger:    logrus.New(),
+		cache:     mycache,
+		redis:     rdb,
 		store:     store,
 		HTTPstore: httpstore,
 	}

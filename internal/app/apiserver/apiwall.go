@@ -1,15 +1,20 @@
 package apiserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/go-redis/cache/v8"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/katelinlis/Wallbackend/internal/app/model"
 )
+
+var ctx = context.Background()
 
 func (s *server) ConfigureWallRouter() {
 
@@ -96,7 +101,8 @@ func (s *server) HandleSendWall() http.HandlerFunc {
 			return
 		}
 
-		s.redis.Del("wallget/" + string(rune(int(userid))))
+		s.redis.Del(ctx, "wallget/"+string(rune(int(userid))))
+
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		s.respond(w, request, http.StatusOK, wall)
 	}
@@ -111,25 +117,40 @@ func (s *server) HandleGetNews() http.HandlerFunc {
 			s.error(w, request, http.StatusUnauthorized, err)
 			return
 		}
-		friends, err := s.HTTPstore.User().GetFriends(int(userid))
+		wall := []model.Wall{}
+
+		err = s.cache.Once(&cache.Item{
+			Key:   "newsForUser" + fmt.Sprint(userid) + fmt.Sprint(limit) + fmt.Sprint(offset),
+			Value: &wall, // destination
+			TTL:   time.Minute,
+			Do: func(*cache.Item) (interface{}, error) {
+
+				friends, err := s.HTTPstore.User().GetFriends(int(userid))
+				if err != nil {
+
+					return wall, err
+				}
+				wall, err := s.store.Wall().GetByFriends(offset, limit, friends)
+				if err != nil {
+
+					return wall, err
+				}
+				for index, element := range wall {
+					user, err := s.HTTPstore.User().GetUser(element.Author)
+					if err != nil {
+						return wall, err
+					}
+					wall[index].AuthorUsername = user.Username
+					wall[index].AuthorAvatar = user.Avatar
+				}
+				return wall, err
+			},
+		})
 		if err != nil {
 			s.error(w, request, http.StatusUnprocessableEntity, err)
 			return
 		}
-		wall, err := s.store.Wall().GetByFriends(offset, limit, friends)
-		if err != nil {
-			s.error(w, request, http.StatusUnprocessableEntity, err)
-			return
-		}
-		for index, element := range wall {
-			user, err := s.HTTPstore.User().GetUser(element.Author)
-			if err != nil {
-				s.error(w, request, http.StatusUnprocessableEntity, err)
-				return
-			}
-			wall[index].AuthorUsername = user.Username
-			wall[index].AuthorAvatar = user.Avatar
-		}
+
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		s.respond(w, request, http.StatusOK, wall)
 	}
@@ -138,27 +159,42 @@ func (s *server) HandleGetNews() http.HandlerFunc {
 func (s *server) HandleGetNewsByAuthor() http.HandlerFunc {
 	return func(w http.ResponseWriter, request *http.Request) {
 		vars := mux.Vars(request)
-		id, err := strconv.Atoi(vars["id"])
+		authorID, err := strconv.Atoi(vars["id"])
 		if err != nil {
 			fmt.Println(err)
 		}
 
 		offset, limit := s.UrlLimitOffset(request)
-		wall, err := s.store.Wall().GetByAuthor(offset, limit, id)
+		wall := []model.Wall{}
+
+		err = s.cache.Once(&cache.Item{
+			Key:   "newsByAuthor" + fmt.Sprint(authorID) + fmt.Sprint(limit) + fmt.Sprint(offset),
+			Value: &wall, // destination
+			TTL:   time.Minute,
+			Do: func(*cache.Item) (interface{}, error) {
+
+				wall, err := s.store.Wall().GetByAuthor(offset, limit, authorID)
+				if err != nil {
+					return wall, err
+				}
+
+				for index, element := range wall {
+					user, err := s.HTTPstore.User().GetUser(element.Author)
+					if err != nil {
+						return wall, err
+					}
+					wall[index].AuthorUsername = user.Username
+					wall[index].AuthorAvatar = user.Avatar
+				}
+
+				return wall, err
+			},
+		})
 		if err != nil {
 			s.error(w, request, http.StatusUnprocessableEntity, err)
 			return
 		}
 
-		for index, element := range wall {
-			user, err := s.HTTPstore.User().GetUser(element.Author)
-			if err != nil {
-				s.error(w, request, http.StatusUnprocessableEntity, err)
-				return
-			}
-			wall[index].AuthorUsername = user.Username
-			wall[index].AuthorAvatar = user.Avatar
-		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		s.respond(w, request, http.StatusOK, wall)
 	}

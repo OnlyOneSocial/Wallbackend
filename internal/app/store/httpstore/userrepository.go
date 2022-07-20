@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-redis/cache/v8"
 	"github.com/katelinlis/Wallbackend/internal/app/model"
@@ -26,6 +27,7 @@ func (r *UserRepository) GetUser(AuthorID int) (usrObj model.UserObj, err error)
 	err = r.store.cache.Once(&cache.Item{
 		Key:   "user" + fmt.Sprint(userID),
 		Value: &usrObj, // destination
+		TTL:   time.Hour,
 		Do: func(*cache.Item) (interface{}, error) {
 
 			client := http.Client{}
@@ -53,6 +55,7 @@ func (r *UserRepository) GetFriends(AuthorID int) (result []int, err error) {
 	err = r.store.cache.Once(&cache.Item{
 		Key:   "array_friends" + fmt.Sprint(AuthorID),
 		Value: &result, // destination
+		TTL:   time.Hour,
 		Do: func(*cache.Item) (interface{}, error) {
 
 			client := http.Client{}

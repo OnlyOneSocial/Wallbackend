@@ -3,6 +3,7 @@ package apiserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -111,6 +112,10 @@ func (s *server) HandleSendWall() http.HandlerFunc {
 func (s *server) HandleGetNews() http.HandlerFunc {
 	return func(w http.ResponseWriter, request *http.Request) {
 		offset, limit := s.UrlLimitOffset(request)
+		if limit > 1000 {
+			s.error(w, request, http.StatusBadRequest, errors.New("limit > 100"))
+			return
+		}
 
 		userid, err := s.GetDataFromToken(w, request)
 		if err != nil {
@@ -165,6 +170,10 @@ func (s *server) HandleGetNewsByAuthor() http.HandlerFunc {
 		}
 
 		offset, limit := s.UrlLimitOffset(request)
+		if limit > 1000 {
+			s.error(w, request, http.StatusBadRequest, errors.New("limit > 100"))
+			return
+		}
 		wall := []model.Wall{}
 
 		err = s.cache.Once(&cache.Item{

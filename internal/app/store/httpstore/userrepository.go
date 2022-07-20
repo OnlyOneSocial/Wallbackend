@@ -2,12 +2,13 @@ package httpstore
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/go-redis/cache/v8"
 	"github.com/katelinlis/Wallbackend/internal/app/model"
-	"github.com/patrickmn/go-cache"
 )
 
 //UserRepository ...
@@ -16,45 +17,56 @@ type UserRepository struct {
 }
 
 //GetUser ...
-func (r *UserRepository) GetUser(AuthorID int) model.UserObj {
-	if val, ok := r.store.CacheUser.Get(strconv.Itoa(AuthorID)); ok {
+func (r *UserRepository) GetUser(AuthorID int) (usrObj model.UserObj, err error) {
+	/*if val, ok := r.store.CacheUser.Get(strconv.Itoa(AuthorID)); ok {
 		return val.(model.UserObj)
-	}
+	}*/
 	userID := strconv.Itoa(AuthorID)
 
-	client := http.Client{}
-	resp, err := client.Get(`http://localhost:3046/api/user/get/` + userID)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	err = r.store.cache.Once(&cache.Item{
+		Key:   "user" + fmt.Sprint(userID),
+		Value: usrObj, // destination
+		Do: func(*cache.Item) (interface{}, error) {
 
-	var result map[string]map[string]string
-	json.NewDecoder(resp.Body).Decode(&result)
+			client := http.Client{}
+			resp, err := client.Get(`https://only-one.su/api/user/get/` + userID)
+			if err != nil {
+				log.Fatalln(err)
+			}
 
-	usrObj := model.UserObj{
-		Username: result["user"]["username"],
-		Avatar:   result["user"]["avatar"],
-	}
-	r.store.CacheUser.Set(userID, usrObj, cache.DefaultExpiration)
-	return usrObj
+			var result map[string]map[string]string
+			json.NewDecoder(resp.Body).Decode(&result)
+			usrObj := model.UserObj{
+				Username: result["user"]["username"],
+				Avatar:   result["user"]["avatar"],
+			}
+
+			return usrObj, err
+		},
+	})
+	return usrObj, err
 }
 
 //GetFriends ...
-func (r *UserRepository) GetFriends(AuthorID int) []int {
-	if val, ok := r.store.CacheFriends.Get(strconv.Itoa(AuthorID)); ok {
-		return val.([]int)
-	}
-	userID := strconv.Itoa(AuthorID)
+func (r *UserRepository) GetFriends(AuthorID int) (result []int, err error) {
 
-	client := http.Client{}
-	resp, err := client.Get(`http://localhost:3046/api/friends/array_friends/` + userID)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	err = r.store.cache.Once(&cache.Item{
+		Key:   "array_friends" + fmt.Sprint(AuthorID),
+		Value: result, // destination
+		Do: func(*cache.Item) (interface{}, error) {
 
-	var result []int
-	json.NewDecoder(resp.Body).Decode(&result)
+			client := http.Client{}
+			resp, err := client.Get(`https://only-one.su/api/friends/array_friends/` + fmt.Sprint(AuthorID))
+			if err != nil {
+				log.Fatalln(err)
+			}
 
-	r.store.CacheFriends.Set(userID, result, cache.DefaultExpiration)
-	return result
+			var result []int
+			json.NewDecoder(resp.Body).Decode(&result)
+
+			return result, err
+		},
+	})
+	return result, err
+
 }

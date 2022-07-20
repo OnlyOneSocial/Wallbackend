@@ -3,12 +3,14 @@ package httpstore
 import (
 	"time"
 
+	"github.com/go-redis/cache/v8"
+	"github.com/go-redis/redis/v8"
 	"github.com/katelinlis/Wallbackend/internal/app/store"
-	"github.com/patrickmn/go-cache"
 )
 
 //Store ...
 type Store struct {
+	cache          *cache.Cache
 	CacheUser      *cache.Cache
 	CacheFriends   *cache.Cache
 	userCache      map[int]string
@@ -29,11 +31,18 @@ Todo поставить ограничение на карту
 */
 
 func New() *Store {
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+
+	mycache := cache.New(&cache.Options{
+		Redis:      rdb,
+		LocalCache: cache.NewTinyLFU(10000, time.Minute),
+	})
+
 	return &Store{
-		CacheUser:    cache.New(5*time.Minute, 10*time.Minute),
-		CacheFriends: cache.New(5*time.Minute, 10*time.Minute),
-		userCache:    make(map[int]string),
-		friendsCache: make(map[int][]int),
+		cache: mycache,
 	}
 }
 

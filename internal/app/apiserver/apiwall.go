@@ -93,6 +93,7 @@ func (s *server) HandleSendWall() http.HandlerFunc {
 		}
 
 		s.redis.Del("wallget/" + string(rune(int(userid))))
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		s.respond(w, request, http.StatusOK, wall)
 	}
 }
@@ -106,16 +107,26 @@ func (s *server) HandleGetNews() http.HandlerFunc {
 			fmt.Println(err)
 		}
 
-		friends := s.HTTPstore.User().GetFriends(int(userid))
+		friends, err := s.HTTPstore.User().GetFriends(int(userid))
+		if err != nil {
+			s.error(w, request, http.StatusUnprocessableEntity, err)
+			return
+		}
 		wall, err := s.store.Wall().GetByFriends(offset, limit, friends)
 		if err != nil {
-			fmt.Println(err)
+			s.error(w, request, http.StatusUnprocessableEntity, err)
+			return
 		}
 		for index, element := range wall {
-			user := s.HTTPstore.User().GetUser(element.Author)
+			user, err := s.HTTPstore.User().GetUser(element.Author)
+			if err != nil {
+				s.error(w, request, http.StatusUnprocessableEntity, err)
+				return
+			}
 			wall[index].AuthorUsername = user.Username
 			wall[index].AuthorAvatar = user.Avatar
 		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		s.respond(w, request, http.StatusOK, wall)
 	}
 }
@@ -135,11 +146,15 @@ func (s *server) HandleGetNewsByAuthor() http.HandlerFunc {
 		}
 
 		for index, element := range wall {
-			user := s.HTTPstore.User().GetUser(element.Author)
+			user, err := s.HTTPstore.User().GetUser(element.Author)
+			if err != nil {
+				s.error(w, request, http.StatusUnprocessableEntity, err)
+				return
+			}
 			wall[index].AuthorUsername = user.Username
 			wall[index].AuthorAvatar = user.Avatar
 		}
-
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		s.respond(w, request, http.StatusOK, wall)
 	}
 }
@@ -160,12 +175,20 @@ func (s *server) HandleGetPost() http.HandlerFunc {
 			fmt.Println(err)
 		}
 
-		user := s.HTTPstore.User().GetUser(post.Author)
+		user, err := s.HTTPstore.User().GetUser(post.Author)
+		if err != nil {
+			s.error(w, request, http.StatusUnprocessableEntity, err)
+			return
+		}
 		post.AuthorUsername = user.Username
 		post.AuthorAvatar = user.Avatar
 
 		for index, element := range answers {
-			user := s.HTTPstore.User().GetUser(element.Author)
+			user, err := s.HTTPstore.User().GetUser(element.Author)
+			if err != nil {
+				s.error(w, request, http.StatusUnprocessableEntity, err)
+				return
+			}
 			answers[index].AuthorUsername = user.Username
 			answers[index].AuthorAvatar = user.Avatar
 		}
@@ -174,7 +197,7 @@ func (s *server) HandleGetPost() http.HandlerFunc {
 			Post:    post,
 			Answers: answers,
 		}
-
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		s.respond(w, request, http.StatusOK, postdata)
 	}
 }

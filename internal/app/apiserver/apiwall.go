@@ -50,7 +50,8 @@ func (s *server) HandleSetLikeOrRemove() http.HandlerFunc {
 		if !liked && err != nil && err.Error() == "sql: no rows in result set" {
 			liked, err := s.store.Wall().SetLike(wall.RandomID, int(userid))
 			if err != nil {
-				fmt.Println(err.Error())
+				s.error(w, request, http.StatusUnprocessableEntity, err)
+				return
 			}
 			fmt.Println(liked)
 		}
@@ -58,7 +59,8 @@ func (s *server) HandleSetLikeOrRemove() http.HandlerFunc {
 		if liked {
 			liked, err := s.store.Wall().RemoveLike(wall.RandomID, int(userid))
 			if err != nil {
-				fmt.Println(err.Error())
+				s.error(w, request, http.StatusUnprocessableEntity, err)
+				return
 			}
 			fmt.Println(liked)
 		}
@@ -70,12 +72,14 @@ func (s *server) HandleSendWall() http.HandlerFunc {
 	return func(w http.ResponseWriter, request *http.Request) {
 		userid, err := s.GetDataFromToken(w, request)
 		if err != nil {
-			fmt.Println(err)
+			s.error(w, request, http.StatusUnauthorized, err)
+			return
 		}
 		var createPost CreatePost
 		err = json.NewDecoder(request.Body).Decode(&createPost)
 		if err != nil {
 			s.error(w, request, http.StatusBadRequest, err)
+			return
 		}
 
 		var wall model.Wall
@@ -88,7 +92,7 @@ func (s *server) HandleSendWall() http.HandlerFunc {
 		err = s.store.Wall().Create(&wall)
 
 		if err != nil {
-			s.respond(w, request, http.StatusUnprocessableEntity, err)
+			s.error(w, request, http.StatusUnprocessableEntity, err)
 			return
 		}
 
@@ -104,9 +108,9 @@ func (s *server) HandleGetNews() http.HandlerFunc {
 
 		userid, err := s.GetDataFromToken(w, request)
 		if err != nil {
-			fmt.Println(err)
+			s.error(w, request, http.StatusUnauthorized, err)
+			return
 		}
-
 		friends, err := s.HTTPstore.User().GetFriends(int(userid))
 		if err != nil {
 			s.error(w, request, http.StatusUnprocessableEntity, err)
@@ -142,7 +146,8 @@ func (s *server) HandleGetNewsByAuthor() http.HandlerFunc {
 		offset, limit := s.UrlLimitOffset(request)
 		wall, err := s.store.Wall().GetByAuthor(offset, limit, id)
 		if err != nil {
-			fmt.Println(err)
+			s.error(w, request, http.StatusUnprocessableEntity, err)
+			return
 		}
 
 		for index, element := range wall {
@@ -172,7 +177,8 @@ func (s *server) HandleGetPost() http.HandlerFunc {
 
 		post, answers, err := s.store.Wall().GetPost(postID)
 		if err != nil {
-			fmt.Println(err)
+			s.error(w, request, http.StatusUnprocessableEntity, err)
+			return
 		}
 
 		user, err := s.HTTPstore.User().GetUser(post.Author)

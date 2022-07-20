@@ -11,25 +11,10 @@ import (
 //Store ...
 type Store struct {
 	cache          *cache.Cache
-	CacheUser      *cache.Cache
-	CacheFriends   *cache.Cache
-	userCache      map[int]string
-	friendsCache   map[int][]int
 	userRepository *UserRepository
 }
 
-/*
-Todo поставить ограничение на карту
-
- и удалять некоторую информацию в случае достяжении лимита
-
- for k := range userCache {
-    delete(userCache, k)
-}
-
-а лучше подключить это https://github.com/patrickmn/go-cache
-*/
-
+//New ...
 func New() *Store {
 
 	rdb := redis.NewClient(&redis.Options{
@@ -46,6 +31,7 @@ func New() *Store {
 	}
 }
 
+//User ...
 func (s *Store) User() store.UserRepository {
 	if s.userRepository != nil {
 		return s.userRepository

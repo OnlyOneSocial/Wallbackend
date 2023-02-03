@@ -120,15 +120,15 @@ func (r *WallRepository) GetByAuthor(offset int, limit int, userid int) ([]model
 				post := model.Wall{}
 				err := rows.Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO, pq.Array(&post.Likes))
 				if err != nil {
-					return wall, err
+					return localWall, err
 				}
 				post.Proccessing()
 				AnswerCount, err := r.GetAnswersCount(post.RandomID.String())
 				if err != nil {
-					return wall, err
+					return localWall, err
 				}
 				post.AnswerCount = AnswerCount
-				wall = append(wall, post)
+				localWall = append(localWall, post)
 			}
 
 			return localWall, err

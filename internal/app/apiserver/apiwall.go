@@ -170,7 +170,7 @@ func (s *server) HandleGetNewsByAuthor() http.HandlerFunc {
 		}
 
 		offset, limit := s.UrlLimitOffset(request)
-		if limit > 1000 {
+		if limit > 100 {
 			s.error(w, request, http.StatusBadRequest, errors.New("limit > 100"))
 			return
 		}

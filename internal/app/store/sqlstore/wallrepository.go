@@ -130,10 +130,11 @@ func (r *WallRepository) GetByAuthor(offset int, limit int, userid int) ([]model
 				post.AnswerCount = AnswerCount
 				localWall = append(localWall, post)
 			}
-
+			fmt.Println(err)
 			return localWall, err
 		},
 	})
+	fmt.Println(err)
 	return wall, err
 }
 

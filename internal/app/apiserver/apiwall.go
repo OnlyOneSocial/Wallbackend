@@ -28,7 +28,7 @@ func (s *server) ConfigureWallRouter() {
 	//router.HandleFunc("/ScanDBandCreateUUID", s.CreateUUID()).Methods("GET") // Получение стены какого то пользователя
 }
 
-//CreatePost ...
+// CreatePost ...
 type CreatePost struct {
 	Text     string `json:"text"`
 	AnswerTO string `json:"answer"`
@@ -174,31 +174,21 @@ func (s *server) HandleGetNewsByAuthor() http.HandlerFunc {
 			s.error(w, request, http.StatusBadRequest, errors.New("limit > 100"))
 			return
 		}
-		wall := []model.Wall{}
 
-		err = s.cache.Once(&cache.Item{
-			Key:   "newsByAuthor" + fmt.Sprint(authorID) + fmt.Sprint(limit) + fmt.Sprint(offset),
-			Value: &wall, // destination
-			TTL:   time.Minute,
-			Do: func(*cache.Item) (interface{}, error) {
+		wall, err := s.store.Wall().GetByAuthor(offset, limit, authorID)
+		if err != nil {
+			s.error(w, request, http.StatusUnprocessableEntity, err)
+		}
 
-				wall, err := s.store.Wall().GetByAuthor(offset, limit, authorID)
-				if err != nil {
-					return wall, err
-				}
+		for index, element := range wall {
+			user, err := s.HTTPstore.User().GetUser(element.Author)
+			if err != nil {
+				s.error(w, request, http.StatusUnprocessableEntity, err)
+			}
+			wall[index].AuthorUsername = user.Username
+			wall[index].AuthorAvatar = user.Avatar
+		}
 
-				for index, element := range wall {
-					user, err := s.HTTPstore.User().GetUser(element.Author)
-					if err != nil {
-						return wall, err
-					}
-					wall[index].AuthorUsername = user.Username
-					wall[index].AuthorAvatar = user.Avatar
-				}
-
-				return wall, err
-			},
-		})
 		if err != nil {
 			s.error(w, request, http.StatusUnprocessableEntity, err)
 			return

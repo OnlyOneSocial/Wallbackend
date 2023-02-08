@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
-	"github.com/go-redis/cache/v8"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/katelinlis/Wallbackend/internal/app/model"
@@ -24,8 +22,8 @@ func (s *server) ConfigureWallRouter() {
 	router.HandleFunc("/get", s.HandleGetNews()).Methods("GET")                // Получение всей стены
 	router.HandleFunc("/post/{postID}", s.HandleGetPost()).Methods("GET")      // Получение определенного поста
 	router.HandleFunc("/get/{id}", s.HandleGetNewsByAuthor()).Methods("GET")   // Получение стены какого то пользователя
-	router.HandleFunc("/like/{id}", s.HandleSetLikeOrRemove()).Methods("POST") // Получение стены какого то пользователя
-	//router.HandleFunc("/ScanDBandCreateUUID", s.CreateUUID()).Methods("GET") // Получение стены какого то пользователя
+	router.HandleFunc("/like/{id}", s.HandleSetLikeOrRemove()).Methods("POST") // Поставить лайк на пост
+	//router.HandleFunc("/ScanDBandCreateUUID", s.CreateUUID()).Methods("GET") //
 }
 
 // CreatePost ...
@@ -122,35 +120,27 @@ func (s *server) HandleGetNews() http.HandlerFunc {
 			s.error(w, request, http.StatusUnauthorized, err)
 			return
 		}
-		wall := []model.Wall{}
 
-		err = s.cache.Once(&cache.Item{
-			Key:   "newsForUser" + fmt.Sprint(userid) + fmt.Sprint(limit) + fmt.Sprint(offset),
-			Value: &wall, // destination
-			TTL:   time.Minute,
-			Do: func(*cache.Item) (interface{}, error) {
+		friends, err := s.HTTPstore.User().GetFriends(int(userid))
+		if err != nil {
+			s.error(w, request, http.StatusUnprocessableEntity, err)
+			return
+		}
+		wall, err := s.store.Wall().GetByFriends(offset, limit, friends)
+		if err != nil {
+			s.error(w, request, http.StatusUnprocessableEntity, err)
+			return
+		}
+		for index, element := range wall {
+			user, err := s.HTTPstore.User().GetUser(element.Author)
+			if err != nil {
+				s.error(w, request, http.StatusUnprocessableEntity, err)
+				return
+			}
+			wall[index].AuthorUsername = user.Username
+			wall[index].AuthorAvatar = user.Avatar
+		}
 
-				friends, err := s.HTTPstore.User().GetFriends(int(userid))
-				if err != nil {
-
-					return wall, err
-				}
-				wall, err := s.store.Wall().GetByFriends(offset, limit, friends)
-				if err != nil {
-
-					return wall, err
-				}
-				for index, element := range wall {
-					user, err := s.HTTPstore.User().GetUser(element.Author)
-					if err != nil {
-						return wall, err
-					}
-					wall[index].AuthorUsername = user.Username
-					wall[index].AuthorAvatar = user.Avatar
-				}
-				return wall, err
-			},
-		})
 		if err != nil {
 			s.error(w, request, http.StatusUnprocessableEntity, err)
 			return

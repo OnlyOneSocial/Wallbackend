@@ -6,17 +6,18 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-redis/cache/v8"
 	"github.com/google/uuid"
 	"github.com/katelinlis/Wallbackend/internal/app/model"
 	"github.com/lib/pq"
 )
 
-//WallRepository ...
+// WallRepository ...
 type WallRepository struct {
 	store *Store
 }
 
-//Create ...
+// Create ...
 func (r *WallRepository) Create(p *model.Wall) error {
 
 	if err := p.Validate(); err != nil {
@@ -36,7 +37,7 @@ func (r *WallRepository) Create(p *model.Wall) error {
 	return err2
 }
 
-//Update ...
+// Update ...
 func (r *WallRepository) Update(p *model.Wall) error {
 
 	if err := p.Validate(); err != nil {
@@ -54,7 +55,7 @@ func (r *WallRepository) Update(p *model.Wall) error {
 	return err2
 }
 
-//SetLike ...
+// SetLike ...
 func (r *WallRepository) SetLike(PostID uuid.UUID, wholiked int) (bool, error) {
 	err := r.store.db.QueryRow("UPDATE wall SET likes = array_append(likes,$1) WHERE random_id=$2 RETURNING random_id", wholiked, PostID.String())
 
@@ -66,7 +67,7 @@ func (r *WallRepository) SetLike(PostID uuid.UUID, wholiked int) (bool, error) {
 	return true, nil
 }
 
-//RemoveLike ...
+// RemoveLike ...
 func (r *WallRepository) RemoveLike(PostID uuid.UUID, wholiked int) (bool, error) {
 	err := r.store.db.QueryRow("UPDATE wall SET likes = array_remove(likes,$1) WHERE random_id=$2 RETURNING random_id", wholiked, PostID.String())
 
@@ -78,7 +79,7 @@ func (r *WallRepository) RemoveLike(PostID uuid.UUID, wholiked int) (bool, error
 	return true, nil
 }
 
-//GetLike ...
+// GetLike ...
 func (r *WallRepository) GetLike(PostID uuid.UUID, wholiked int) (bool, error) {
 	err := r.store.db.QueryRow("Select random_id from wall where random_id = $2 and $1 = ANY(likes)", wholiked, PostID.String())
 
@@ -90,7 +91,7 @@ func (r *WallRepository) GetLike(PostID uuid.UUID, wholiked int) (bool, error) {
 	return true, nil
 }
 
-//GetLikes ...
+// GetLikes ...
 func (r *WallRepository) GetLikes(PostID uuid.UUID) (bool, error) {
 	err := r.store.db.QueryRow("Select random_id,likes::bigint[] from wall where random_id = $1", PostID.String())
 
@@ -102,27 +103,39 @@ func (r *WallRepository) GetLikes(PostID uuid.UUID) (bool, error) {
 	return true, nil
 }
 
-//GetByAuthor ...
+// GetByAuthor ...
 func (r *WallRepository) GetByAuthor(offset int, limit int, userid int) ([]model.Wall, error) {
 	wall := []model.Wall{}
 
-	var rows, err2 = r.store.db.Query("Select author,text,timestamp,random_id,answer_to,likes::bigint[] from wall where author = $1 ORDER BY timestamp DESC limit $2 OFFSET $3", userid, limit, offset)
-	for rows.Next() {
-		post := model.Wall{}
-		err := rows.Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO, pq.Array(&post.Likes))
-		if err != nil {
-			return wall, err
-		}
-		post.Proccessing()
-		AnswerCount, err := r.GetAnswersCount(post.RandomID.String())
-		if err != nil {
-			return wall, err
-		}
-		post.AnswerCount = AnswerCount
-		wall = append(wall, post)
-	}
+	err := r.store.cache.Once(&cache.Item{
+		Key:   "newsByAuthor" + fmt.Sprint(userid) + fmt.Sprint(limit) + fmt.Sprint(offset),
+		Value: &wall, // destination
+		TTL:   time.Second * 5,
+		Do: func(*cache.Item) (interface{}, error) {
 
-	return wall, err2
+			localWall := []model.Wall{}
+
+			var rows, err = r.store.db.Query("Select author,text,timestamp,random_id,answer_to,likes::bigint[] from wall where author = $1 ORDER BY timestamp DESC limit $2 OFFSET $3", userid, limit, offset)
+			for rows.Next() {
+				post := model.Wall{}
+				err := rows.Scan(&post.Author, &post.Text, &post.Timestamp, &post.RandomID, &post.AnswerTO, pq.Array(&post.Likes))
+				if err != nil {
+					return localWall, err
+				}
+				post.Proccessing()
+				AnswerCount, err := r.GetAnswersCount(post.RandomID.String())
+				if err != nil {
+					return localWall, err
+				}
+				post.AnswerCount = AnswerCount
+				localWall = append(localWall, post)
+			}
+			fmt.Println(err)
+			return localWall, err
+		},
+	})
+	fmt.Println(err)
+	return wall, err
 }
 
 // GetByFriends ...
@@ -154,7 +167,7 @@ func (r *WallRepository) GetByFriends(offset int, limit int, userids []int) ([]m
 	return wall, err2
 }
 
-//GetAnswers ...
+// GetAnswers ...
 func (r *WallRepository) GetAnswers(PostID string) ([]model.Wall, error) {
 	answer := []model.Wall{}
 	rows, err := r.store.db.Query(
@@ -184,7 +197,7 @@ func (r *WallRepository) GetAnswers(PostID string) ([]model.Wall, error) {
 	return answer, err
 }
 
-//GetAnswersCount ...
+// GetAnswersCount ...
 func (r *WallRepository) GetAnswersCount(PostID string) (int, error) {
 	var count int
 	err := r.store.db.QueryRow(
@@ -197,7 +210,7 @@ func (r *WallRepository) GetAnswersCount(PostID string) (int, error) {
 	return count, err
 }
 
-//GetPost ...
+// GetPost ...
 func (r *WallRepository) GetPost(PostID string) (model.Wall, []model.Wall, error) {
 	post := model.Wall{}
 	answer := []model.Wall{}

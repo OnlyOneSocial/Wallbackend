@@ -26,7 +26,7 @@ type Wall struct {
 func (w *Wall) Validate() error {
 	return validation.ValidateStruct(
 		w,
-		validation.Field(&w.Text, validation.Required, validation.Length(1, 400)),
+		validation.Field(&w.Text, validation.Required, validation.RuneLength(1, 400)),
 		validation.Field(&w.Author, validation.Required),
 	)
 }

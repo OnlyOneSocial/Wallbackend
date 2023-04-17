@@ -21,6 +21,6 @@ type WallRepository interface {
 
 //UserRepository ...
 type UserRepository interface {
-	GetUser(AuthorID int) (model.UserObj, error) //Получение данных о пользователе
-	GetFriends(int) ([]int, error)               //Получение списка друзей пользователя
+	GetUser(AuthorID int, useruuid string) (usrObj model.UserObj, err error) //Получение данных о пользователе
+	GetFriends(int) ([]int, error)                                           //Получение списка друзей пользователя
 }

@@ -18,27 +18,34 @@ type UserRepository struct {
 }
 
 //GetUser ...
-func (r *UserRepository) GetUser(AuthorID int) (usrObj model.UserObj, err error) {
+func (r *UserRepository) GetUser(AuthorID int, useruuid string) (usrObj model.UserObj, err error) {
 	/*if val, ok := r.store.CacheUser.Get(strconv.Itoa(AuthorID)); ok {
 		return val.(model.UserObj)
 	}*/
 	userID := strconv.Itoa(AuthorID)
 
 	err = r.store.cache.Once(&cache.Item{
-		Key:   "user" + fmt.Sprint(userID),
+		Key:   "user" + useruuid + fmt.Sprint(userID),
 		Value: &usrObj, // destination
 		TTL:   time.Hour,
 		Do: func(*cache.Item) (interface{}, error) {
 
 			client := http.Client{}
-			resp, err := client.Get(`https://only-one.su/api/user/get/` + userID)
+			var resp *http.Response
+			if useruuid == "" {
+				resp, err = client.Get(`https://only-one.su/api/user/get/` + userID)
+			} else {
+				resp, err = client.Get(`https://only-one.su/api/user/get_by_uuid/` + useruuid)
+			}
 			if err != nil {
 				log.Fatalln(err)
 			}
 
 			var result map[string]map[string]string
 			json.NewDecoder(resp.Body).Decode(&result)
+			userIDInt, err := strconv.Atoi(result["user"]["id"])
 			usrObj := model.UserObj{
+				ID:       userIDInt,
 				Username: result["user"]["username"],
 				Avatar:   result["user"]["avatar"],
 			}

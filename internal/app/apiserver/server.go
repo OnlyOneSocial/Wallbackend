@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -62,7 +65,46 @@ func newServer(store store.Store, httpstore store.HTTPStore, config *Config) *se
 	return s
 }
 
-func (s *server) GetDataFromToken(w http.ResponseWriter, r *http.Request) (float64, error) {
+type UserAuth struct {
+	LegacyID int
+	UserUUID string
+	Username string
+}
+
+func verifyTokenRS256(token, publicKeyPath string) (userAuth UserAuth, err error) {
+	keyData, err := ioutil.ReadFile(publicKeyPath)
+	if err != nil {
+		return userAuth, err
+	}
+	key, err := jwt.ParseRSAPublicKeyFromPEM(keyData)
+	if err != nil {
+		return userAuth, err
+	}
+
+	parsedToken, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
+			msg := fmt.Errorf("Unexpected signing method: %v", t.Header["alg"])
+			return 0, msg
+		}
+		return key, nil
+	})
+
+	if parsedToken != nil && parsedToken.Valid {
+		if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok {
+			username := claims["preferred_username"].(string)
+			UserUUID := claims["sub"].(string)
+
+			return UserAuth{
+				UserUUID: UserUUID,
+				Username: username,
+			}, nil
+		}
+	}
+
+	return userAuth, nil
+}
+
+func (s *server) GetDataFromToken(w http.ResponseWriter, r *http.Request) (userAuthData UserAuth, err error) {
 	var token string
 	tokens, ok := r.Header["Authorization"]
 	if ok && len(tokens) >= 1 {
@@ -71,7 +113,7 @@ func (s *server) GetDataFromToken(w http.ResponseWriter, r *http.Request) (float
 	}
 
 	if token == "" {
-		return 0, errors.New("Token is missing")
+		return userAuthData, errors.New("Token is missing")
 	}
 
 	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
@@ -82,17 +124,43 @@ func (s *server) GetDataFromToken(w http.ResponseWriter, r *http.Request) (float
 		return []byte(jwtsignkey), nil
 	})
 
+	if parsedToken == nil || parsedToken.Method == nil {
+		return userAuthData, errors.New("Error parsing token")
+	}
+
+	if parsedToken.Method.Alg() != "HS256" {
+		path, err := os.Getwd()
+		fmt.Println(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		userAuthData, err := verifyTokenRS256(token, path+"/configs/public_key.key")
+		if err != nil {
+			return userAuthData, errors.New("Error parsing token")
+		}
+
+		userid, err := s.HTTPstore.User().GetUser(0, userAuthData.UserUUID)
+		if err != nil {
+			return userAuthData, errors.New("error find legacy userid by ssoid " + err.Error())
+		}
+		userAuthData.LegacyID = userid.ID
+
+		return userAuthData, err
+
+	}
+
 	if err != nil {
-		s.error(w, r, http.StatusUnauthorized, errors.New("Error parsing token"))
-		return 0, err
+		//s.error(w, r, http.StatusUnauthorized, errors.New("Error parsing token"))
+		return userAuthData, errors.New("Error parsing token")
 	}
 	if parsedToken != nil && parsedToken.Valid {
 		if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok {
 			userid := claims["userid"].(float64)
-			return userid, nil
+			userAuthData.LegacyID = int(userid)
+			return userAuthData, nil
 		}
 	}
-	return 0, nil
+	return userAuthData, nil
 
 }
 

@@ -41,13 +41,13 @@ func (r *UserRepository) GetUser(AuthorID int, useruuid string) (usrObj model.Us
 				log.Fatalln(err)
 			}
 
-			var result map[string]map[string]string
+			var result map[string]map[string]interface{}
 			json.NewDecoder(resp.Body).Decode(&result)
-			userIDInt, err := strconv.Atoi(result["user"]["id"])
+			userIDInt := result["user"]["id"].(float64)
 			usrObj := model.UserObj{
-				ID:       userIDInt,
-				Username: result["user"]["username"],
-				Avatar:   result["user"]["avatar"],
+				ID:       int(userIDInt),
+				Username: result["user"]["username"].(string),
+				Avatar:   result["user"]["avatar"].(string),
 			}
 
 			return usrObj, err
